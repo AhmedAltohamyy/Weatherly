@@ -43,7 +43,7 @@ class ForecastCard extends StatelessWidget {
             Expanded(
               child: FittedBox(
                 fit: BoxFit.contain,
-                child: Image.asset("${data.weatherImage}"),
+                child: Image.asset(data.weatherImage),
               ),
             ),
             const SizedBox(height: 20),

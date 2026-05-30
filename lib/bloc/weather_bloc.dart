@@ -94,12 +94,15 @@ class WeatherBloc extends Bloc<WeatherEvent, WeatherState> {
           const url = 'https://api.open-meteo.com/v1/forecast';
           final response = await dio.get(
             url,
+            
             queryParameters: {
               'latitude': event.position.latitude,
               'longitude': event.position.longitude,
-              'current': "temperature_2m,is_day,weather_code",
+              // أضفنا relative_humidity_2m لجلب الرطوبة الحالية
+              'current': "temperature_2m,relative_humidity_2m,is_day,weather_code", 
+              'hourly': "temperature_2m,relative_humidity_2m,is_day,weather_code",
               'daily':
-                  "weather_code,sunrise,sunset,temperature_2m_max,temperature_2m_min",
+                  "weather_code,sunrise,sunset,temperature_2m_max,temperature_2m_min,relative_humidity_2m",
               'timezone': "auto",
             },
           );

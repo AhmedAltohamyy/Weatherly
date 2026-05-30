@@ -8,13 +8,14 @@ import 'package:intl/intl.dart';
 import 'package:weatherly/bloc/weather_bloc.dart';
 import 'package:weatherly/bloc/weather_event.dart';
 import 'package:weatherly/bloc/weather_state.dart';
+import 'package:weatherly/components/hourly_card.dart';
 import 'package:weatherly/components/weather_detail_block.dart';
 import 'package:weatherly/pages/days_weather_page.dart';
 import 'package:weatherly/pages/settings_page.dart';
 import 'package:weatherly/utils/weather_helper.dart'; // استدعاء الهيلبر
 
 class Homepage extends StatefulWidget {
-  final Position position; 
+  final Position position;
   const Homepage({super.key, required this.position});
 
   @override
@@ -42,7 +43,9 @@ class HomepageState extends State<Homepage> {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => ForecastPage(position: widget.position)),
+              MaterialPageRoute(
+                builder: (context) => ForecastPage(position: widget.position),
+              ),
             );
           },
         ),
@@ -69,39 +72,58 @@ class HomepageState extends State<Homepage> {
           await Future.delayed(const Duration(seconds: 1));
         },
         child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(), // ضروري ليعمل التحديث بالسحب
+          physics:
+              const AlwaysScrollableScrollPhysics(), // ضروري ليعمل التحديث بالسحب
           child: SizedBox(
             // لضمان ملء الشاشة وتفعيل الـ Stack
-            height: MediaQuery.of(context).size.height,
+            height: MediaQuery.of(context).size.height >= 850 
+                ? MediaQuery.of(context).size.height 
+                : 850,
             child: Stack(
               children: [
                 Align(
                   alignment: const AlignmentDirectional(2.5, -0.5),
                   child: Container(
-                    height: 500, width: 300,
-                    decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.deepPurple),
+                    height: 500,
+                    width: 300,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.deepPurple,
+                    ),
                   ),
                 ),
                 Align(
                   alignment: const AlignmentDirectional(-2.5, -0.5),
                   child: Container(
-                    height: 500, width: 300,
-                    decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.deepPurple),
+                    height: 500,
+                    width: 300,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.deepPurple,
+                    ),
                   ),
                 ),
                 Align(
                   alignment: const AlignmentDirectional(0, -1.2),
                   child: Container(
-                    height: 300, width: 600,
+                    height: 300,
+                    width: 600,
                     decoration: const BoxDecoration(color: Colors.orange),
                   ),
                 ),
                 BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
-                  child: Container(decoration: const BoxDecoration(color: Colors.transparent)),
+                  child: Container(
+                    decoration: const BoxDecoration(color: Colors.transparent),
+                  ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(top: 100.0, left: 40, right: 40, bottom: 40),
+                  padding: const EdgeInsets.only(
+                    top: 100.0,
+                    left: 40,
+                    right: 40,
+                    bottom: 40,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -109,23 +131,29 @@ class HomepageState extends State<Homepage> {
                         builder: (context, state) {
                           return Text(
                             "📍 ${state is WeatherSuccess ? state.cityName : "Fetching city"}",
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w300),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w300,
+                            ),
                           );
                         },
                       ),
-                      
+      
                       // الصورة تتغير ديناميكياً بناءً على كود الطقس
                       Center(
                         child: BlocSelector<WeatherBloc, WeatherState, int?>(
                           selector: (state) {
                             if (state is WeatherSuccess) {
-                              return state.weatherData['current']['weather_code'];
+                              return state
+                                  .weatherData['current']['weather_code'];
                             }
                             return 0;
                           },
                           builder: (context, weatherCode) {
                             // استخدام الدالة الجديدة لجلب مسار الصورة
-                            String imagePath = getWeatherImagePath(weatherCode!.toInt());
+                            String imagePath = getWeatherImagePath(
+                              weatherCode!.toInt(),
+                            );
                             return Image.asset(
                               imagePath,
                               height: 200,
@@ -133,13 +161,17 @@ class HomepageState extends State<Homepage> {
                               errorBuilder: (context, error, stackTrace) =>
                                   const SizedBox(
                                     height: 150,
-                                    child: Icon(Icons.cloud, color: Colors.white, size: 100),
+                                    child: Icon(
+                                      Icons.cloud,
+                                      color: Colors.white,
+                                      size: 100,
+                                    ),
                                   ),
                             );
                           },
                         ),
                       ),
-                      
+      
                       Center(
                         child: BlocSelector<WeatherBloc, WeatherState, String>(
                           selector: (state) {
@@ -151,44 +183,111 @@ class HomepageState extends State<Homepage> {
                           builder: (context, temp) {
                             return Text(
                               "$temp°C",
-                              style: const TextStyle(fontSize: 55, fontWeight: FontWeight.bold, color: Colors.white),
+                              style: const TextStyle(
+                                fontSize: 55,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             );
                           },
                         ),
                       ),
-                      
+      
                       StreamBuilder<DateTime>(
-                        stream: Stream.periodic(const Duration(minutes: 1), (_) => DateTime.now()),
+                        stream: Stream.periodic(
+                          const Duration(minutes: 1),
+                          (_) => DateTime.now(),
+                        ),
                         initialData: DateTime.now(),
                         builder: (context, snap) {
-                          String formattedDate = DateFormat('EEEE d MMMM - h:mm a').format(DateTime.now());
+                          String formattedDate = DateFormat(
+                            'EEEE d MMMM - h:mm a',
+                          ).format(DateTime.now());
                           return Center(
                             child: Text(
                               formattedDate,
-                              style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w300),
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w300,
+                              ),
                             ),
                           );
-                        }
+                        },
                       ),
-                      const Spacer(),
+                      const SizedBox(height: 20),
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: EdgeInsets.only(left: 10, bottom: 10),
+                          child: Text(
+                            "Hourly Forecast",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      BlocBuilder<WeatherBloc, WeatherState>(
+                        builder: (context, state) {
+                          if (state is WeatherSuccess) {
+                            return hourlyForecast(state);
+                          }
+                          return Text("__");
+                        },
+                      ),
+                      const SizedBox(height: 15),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          WeatherDetailBlock('assets/images/11.png', "Sunrise", (state) {
+                          WeatherDetailBlock('assets/images/11.png', "Sunrise", (
+                            state,
+                          ) {
                             if (state is WeatherSuccess) {
-                              final time = state.weatherData['daily']?['sunrise']?[0];
+                              final time =
+                                  state.weatherData['daily']?['sunrise']?[0];
                               if (time == null) return "--:--";
                               final date = DateTime.parse(time);
                               return "${date.hour}:${date.minute.toString().padLeft(2, "0")}";
                             }
                             return "Loading...";
                           }),
-                          WeatherDetailBlock('assets/images/12.png', "Sunset", (state) {
+                          WeatherDetailBlock('assets/images/12.png', "Sunset", (
+                            state,
+                          ) {
                             if (state is WeatherSuccess) {
-                              final time = state.weatherData['daily']?['sunset']?[0];
+                              final time =
+                                  state.weatherData['daily']?['sunset']?[0];
                               if (time == null) return "--:--";
                               final date = DateTime.parse(time);
                               return "${date.hour}:${date.minute.toString().padLeft(2, "0")}";
+                            }
+                            return "Loading...";
+                          }),
+                        ],
+                      ),
+      
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 5),
+                        child: Divider(color: Colors.grey),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          WeatherDetailBlock('assets/images/13.png', "Temp Max", (
+                            state,
+                          ) {
+                            if (state is WeatherSuccess) {
+                              return "${state.weatherData['daily']?['temperature_2m_max']?[0] ?? '--'}°C";
+                            }
+                            return "Loading...";
+                          }),
+                          WeatherDetailBlock('assets/images/14.png', "Temp Min", (
+                            state,
+                          ) {
+                            if (state is WeatherSuccess) {
+                              return "${state.weatherData['daily']?['temperature_2m_min']?[0] ?? '--'}°C";
                             }
                             return "Loading...";
                           }),
@@ -199,20 +298,20 @@ class HomepageState extends State<Homepage> {
                         child: Divider(color: Colors.grey),
                       ),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment
+                            .center, // وضعناها في المنتصف لأنها عنصر واحد حالياً
                         children: [
-                          WeatherDetailBlock('assets/images/13.png', "Temp Max", (state) {
-                            if (state is WeatherSuccess) {
-                              return "${state.weatherData['daily']?['temperature_2m_max']?[0] ?? '--'}°C";
-                            }
-                            return "Loading...";
-                          }),
-                          WeatherDetailBlock('assets/images/14.png', "Temp Min", (state) {
-                            if (state is WeatherSuccess) {
-                              return "${state.weatherData['daily']?['temperature_2m_min']?[0] ?? '--'}°C";
-                            }
-                            return "Loading...";
-                          }),
+                          WeatherDetailBlock(
+                            'assets/images/1.png',
+                            "Humidity",
+                            (state) {
+                              if (state is WeatherSuccess) {
+                                // جلب الرطوبة من بيانات الـ current
+                                return "${state.weatherData['current']?['relative_humidity_2m'] ?? '--'}%";
+                              }
+                              return "Loading...";
+                            },
+                          ),
                         ],
                       ),
                     ],
