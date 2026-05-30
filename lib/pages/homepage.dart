@@ -74,11 +74,9 @@ class HomepageState extends State<Homepage> {
         child: SingleChildScrollView(
           physics:
               const AlwaysScrollableScrollPhysics(), // ضروري ليعمل التحديث بالسحب
-          child: SizedBox(
-            // لضمان ملء الشاشة وتفعيل الـ Stack
-            height: MediaQuery.of(context).size.height >= 850 
-                ? MediaQuery.of(context).size.height 
-                : 850,
+
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height),
             child: Stack(
               children: [
                 Align(
@@ -138,14 +136,13 @@ class HomepageState extends State<Homepage> {
                           );
                         },
                       ),
-      
+            
                       // الصورة تتغير ديناميكياً بناءً على كود الطقس
                       Center(
                         child: BlocSelector<WeatherBloc, WeatherState, int?>(
                           selector: (state) {
                             if (state is WeatherSuccess) {
-                              return state
-                                  .weatherData['current']['weather_code'];
+                              return state.weatherData['current']['weather_code'];
                             }
                             return 0;
                           },
@@ -171,7 +168,7 @@ class HomepageState extends State<Homepage> {
                           },
                         ),
                       ),
-      
+            
                       Center(
                         child: BlocSelector<WeatherBloc, WeatherState, String>(
                           selector: (state) {
@@ -192,7 +189,7 @@ class HomepageState extends State<Homepage> {
                           },
                         ),
                       ),
-      
+            
                       StreamBuilder<DateTime>(
                         stream: Stream.periodic(
                           const Duration(minutes: 1),
@@ -267,7 +264,7 @@ class HomepageState extends State<Homepage> {
                           }),
                         ],
                       ),
-      
+            
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 5),
                         child: Divider(color: Colors.grey),
@@ -301,17 +298,15 @@ class HomepageState extends State<Homepage> {
                         mainAxisAlignment: MainAxisAlignment
                             .center, // وضعناها في المنتصف لأنها عنصر واحد حالياً
                         children: [
-                          WeatherDetailBlock(
-                            'assets/images/1.png',
-                            "Humidity",
-                            (state) {
-                              if (state is WeatherSuccess) {
-                                // جلب الرطوبة من بيانات الـ current
-                                return "${state.weatherData['current']?['relative_humidity_2m'] ?? '--'}%";
-                              }
-                              return "Loading...";
-                            },
-                          ),
+                          WeatherDetailBlock('assets/images/1.png', "Humidity", (
+                            state,
+                          ) {
+                            if (state is WeatherSuccess) {
+                              // جلب الرطوبة من بيانات الـ current
+                              return "${state.weatherData['current']?['relative_humidity_2m'] ?? '--'}%";
+                            }
+                            return "Loading...";
+                          }),
                         ],
                       ),
                     ],

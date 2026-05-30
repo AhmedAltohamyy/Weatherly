@@ -98,11 +98,9 @@ class WeatherBloc extends Bloc<WeatherEvent, WeatherState> {
             queryParameters: {
               'latitude': event.position.latitude,
               'longitude': event.position.longitude,
-              // أضفنا relative_humidity_2m لجلب الرطوبة الحالية
               'current': "temperature_2m,relative_humidity_2m,is_day,weather_code", 
               'hourly': "temperature_2m,relative_humidity_2m,is_day,weather_code",
-              'daily':
-                  "weather_code,sunrise,sunset,temperature_2m_max,temperature_2m_min,relative_humidity_2m",
+              'daily': "weather_code,sunrise,sunset,temperature_2m_max,temperature_2m_min",
               'timezone': "auto",
             },
           );
