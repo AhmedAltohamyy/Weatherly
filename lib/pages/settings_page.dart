@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:hive/hive.dart';
+import 'package:weatherly/bloc/weather_bloc.dart';
+import 'package:weatherly/bloc/weather_event.dart';
 
+/// Settings page for user preferences including theme, temperature unit, and notifications
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  final Position position;
+  const SettingsPage({super.key, required this.position});
 
   @override
   SettingsPageState createState() => SettingsPageState();
 }
 
 class SettingsPageState extends State<SettingsPage> {
-  // Access the Hive boxes for settings and data management
+  // Hive box for persisting user settings across app sessions
   final Box settings = Hive.box('settings');
 
-  bool notf = false;
+  bool notf = false; // Notification preference toggle
 
   @override
   void initState() {
@@ -21,6 +27,10 @@ class SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Get current temperature unit setting from Hive storage
+    final String Degree = settings.get('degree', defaultValue: "celsius");
+    final String currentUnit = Degree == "celsius" ? "Celsius" : "Fahrenheit";
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -33,6 +43,7 @@ class SettingsPageState extends State<SettingsPage> {
         child: ListView(
           children: [
             const SizedBox(height: 10),
+            // === APPEARANCE SECTION ===
             const Text(
               " Appearance",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -41,15 +52,14 @@ class SettingsPageState extends State<SettingsPage> {
               child: ListTile(
                 title: const Text('Theme'),
                 subtitle: const Text('Light or Dark Theme'),
-                // Update icon dynamically based on current theme status
                 leading: settings.get('darkMode', defaultValue: false)
                     ? const Icon(Icons.dark_mode)
                     : const Icon(Icons.light_mode),
+                // Toggle between light and dark themes
                 trailing: Switch(
                   value: settings.get('darkMode', defaultValue: false),
                   onChanged: (value) {
                     setState(() {
-                      // Save theme preference to Hive
                       settings.put('darkMode', value);
                     });
                   },
@@ -60,18 +70,61 @@ class SettingsPageState extends State<SettingsPage> {
               ),
             ),
             const SizedBox(height: 25),
+
+            // === TEMPERATURE UNIT SECTION ===
             const Text(
               " Degree",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            const Card(
+            Card(
               child: ListTile(
-                leading: Icon(Icons.thermostat_auto_outlined),
-                title: Text('Degree'),
-                trailing: Text('Celisius'),
+                leading: const Icon(Icons.thermostat_auto_outlined),
+                title: const Text('Degree'),
+                subtitle: Text('Current: $currentUnit'),
+
+                // Popup menu to select temperature unit (Celsius or Fahrenheit)
+                trailing: PopupMenuButton<String>(
+                  initialValue: Degree,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        currentUnit,
+                        style: const TextStyle(
+                          color: Colors.blue,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Icon(Icons.arrow_drop_down, color: Colors.blue),
+                    ],
+                  ),
+                  onSelected: (String value) {
+                    // Refresh weather data when temperature unit changes
+                    context.read<WeatherBloc>().add(
+                      FetchWeather(position: widget.position, update: true),
+                    );
+
+                    setState(() {
+                      settings.put('degree', value);
+                    });
+                  },
+                  itemBuilder: (BuildContext context) =>
+                      <PopupMenuEntry<String>>[
+                        const PopupMenuItem<String>(
+                          value: "celsius",
+                          child: Text('Celsius (°C)'),
+                        ),
+                        const PopupMenuItem<String>(
+                          value: "fahrenheit",
+                          child: Text('Fahrenheit (°F)'),
+                        ),
+                      ],
+                ),
               ),
             ),
+
             const SizedBox(height: 25),
+            // === NOTIFICATIONS SECTION ===
             const Text(
               " Notifications",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -95,11 +148,11 @@ class SettingsPageState extends State<SettingsPage> {
               ),
             ),
             const SizedBox(height: 25),
+            // === ABOUT SECTION ===
             const Text(
               " About",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            
             Card(
               child: ListTile(
                 leading: const Icon(Icons.help_outline),

@@ -1,10 +1,15 @@
-// مسار الملف: lib/components/forecast_card.dart
-
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
 import 'package:weatherly/pages/days_weather_page.dart';
 
+/// Displays a card with daily forecast including:
+/// - Day name and date
+/// - Weather icon
+/// - Max and min temperatures
+/// - Sunrise and sunset times
+/// 
+/// Used in horizontal scrollable list on the ForecastPage
 class ForecastCard extends StatelessWidget {
   final ForecastData data;
 
@@ -31,6 +36,7 @@ class ForecastCard extends StatelessWidget {
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
+            // Day name and date (e.g., "Monday, 15/12")
             Text(
               "${data.dayName}, ${data.date}",
               style: const TextStyle(
@@ -40,6 +46,7 @@ class ForecastCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
+            // Weather icon for the day
             Expanded(
               child: FittedBox(
                 fit: BoxFit.contain,
@@ -47,6 +54,7 @@ class ForecastCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
+            // Temperature display with max in large text and min below
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,6 +82,7 @@ class ForecastCard extends StatelessWidget {
               ],
             ),
             const Divider(color: Colors.white30, height: 40, thickness: 1),
+            // Sunrise and sunset times
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -87,6 +96,8 @@ class ForecastCard extends StatelessWidget {
     );
   }
 
+  /// Helper widget to display sunrise/sunset information
+  /// Shows icon, label, and time in a column
   Widget _buildSunInfo(IconData icon, String label, String time) {
     return Column(
       children: [

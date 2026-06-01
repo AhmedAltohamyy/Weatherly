@@ -1,9 +1,10 @@
-// مسار الملف: lib/pages/homepage.dart
+// ignore_for_file: deprecated_member_use
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import 'package:weatherly/bloc/weather_bloc.dart';
 import 'package:weatherly/bloc/weather_event.dart';
@@ -12,51 +13,80 @@ import 'package:weatherly/components/hourly_card.dart';
 import 'package:weatherly/components/weather_detail_block.dart';
 import 'package:weatherly/pages/days_weather_page.dart';
 import 'package:weatherly/pages/settings_page.dart';
-import 'package:weatherly/utils/weather_helper.dart'; // استدعاء الهيلبر
+import 'package:weatherly/utils/weather_helper.dart';
 
+/// Home page displaying current weather and hourly forecast
+/// Shows location, temperature, weather condition, and detailed weather metrics
 class Homepage extends StatefulWidget {
-  final Position position;
-  const Homepage({super.key, required this.position});
+  final Position? position; // Device's geographic position
+  const Homepage({super.key, this.position});
 
   @override
   HomepageState createState() => HomepageState();
 }
 
 class HomepageState extends State<Homepage> {
+  final Box settings = Hive.box('settings');
+
   @override
   void initState() {
     super.initState();
-    context.read<WeatherBloc>().add(FetchWeather(position: widget.position));
+    // Trigger weather fetch when position is available
+    if (widget.position != null) {
+      context.read<WeatherBloc>().add(FetchWeather(position: widget.position!, update: true));
+    }
+  }
+
+  /// Listen for location updates from parent widget
+  @override
+  void didUpdateWidget(covariant Homepage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If position becomes available (was null, now has value), fetch weather
+    if (oldWidget.position == null && widget.position != null) {
+      context.read<WeatherBloc>().add(
+            FetchWeather(position: widget.position!, update: true),
+          );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    String Degree = settings.get('degree', defaultValue: "celsius");
+    String currentUnit = Degree == "celsius" ? "°C" : "°F";
+
     return Scaffold(
       backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        // زر الانتقال لصفحة الأيام (Forecast)
+        // Calendar icon - navigate to daily forecast page
         leading: IconButton(
           icon: const Icon(Icons.calendar_month, color: Colors.white),
           onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ForecastPage(position: widget.position),
-              ),
-            );
+            if (widget.position != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      ForecastPage(position: widget.position!),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Location loading, try again...')),
+              );
+            }
           },
         ),
-        // زر الانتقال لصفحة الإعدادات
         actions: [
+          // Settings icon - open settings page
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.white),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const SettingsPage()),
+                MaterialPageRoute(builder: (context) => SettingsPage(position: widget.position!)),
               );
             },
           ),
@@ -65,20 +95,25 @@ class HomepageState extends State<Homepage> {
       body: RefreshIndicator(
         color: Colors.blueAccent,
         backgroundColor: Colors.white,
+        // Pull-to-refresh functionality to manually update weather
         onRefresh: () async {
           context.read<WeatherBloc>().add(
-            FetchWeather(position: widget.position, update: true),
+            FetchWeather(position: widget.position!, update: true),
           );
           await Future.delayed(const Duration(seconds: 1));
         },
         child: SingleChildScrollView(
           physics:
-              const AlwaysScrollableScrollPhysics(), // ضروري ليعمل التحديث بالسحب
+              const AlwaysScrollableScrollPhysics(),
 
           child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height),
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height,
+            ),
+            // Gradient background with blurred decorative shapes
             child: Stack(
               children: [
+                // Decorative blurred circles for visual effect
                 Align(
                   alignment: const AlignmentDirectional(2.5, -0.5),
                   child: Container(
@@ -109,12 +144,14 @@ class HomepageState extends State<Homepage> {
                     decoration: const BoxDecoration(color: Colors.orange),
                   ),
                 ),
+                // Backdrop blur effect for depth
                 BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
                   child: Container(
                     decoration: const BoxDecoration(color: Colors.transparent),
                   ),
                 ),
+                // Main content column
                 Padding(
                   padding: const EdgeInsets.only(
                     top: 100.0,
@@ -125,6 +162,7 @@ class HomepageState extends State<Homepage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Current city/location display
                       BlocBuilder<WeatherBloc, WeatherState>(
                         builder: (context, state) {
                           return Text(
@@ -136,20 +174,23 @@ class HomepageState extends State<Homepage> {
                           );
                         },
                       ),
-            
-                      // الصورة تتغير ديناميكياً بناءً على كود الطقس
+
+                      // Dynamic weather image based on current weather code and day/night
                       Center(
-                        child: BlocSelector<WeatherBloc, WeatherState, int?>(
+                        child: BlocSelector<WeatherBloc, WeatherState, List?>(
                           selector: (state) {
                             if (state is WeatherSuccess) {
-                              return state.weatherData['current']['weather_code'];
+                              return [
+                                state.weatherData['current']['weather_code'],
+                                state.weatherData['current']['is_day'],
+                              ];
                             }
-                            return 0;
+                            return [0, 1];
                           },
                           builder: (context, weatherCode) {
-                            // استخدام الدالة الجديدة لجلب مسار الصورة
                             String imagePath = getWeatherImagePath(
-                              weatherCode!.toInt(),
+                              weatherCode?[0].toInt(),
+                              weatherCode?[1].toInt(),
                             );
                             return Image.asset(
                               imagePath,
@@ -168,18 +209,19 @@ class HomepageState extends State<Homepage> {
                           },
                         ),
                       ),
-            
+
+                      // Current temperature display
                       Center(
                         child: BlocSelector<WeatherBloc, WeatherState, String>(
                           selector: (state) {
                             if (state is WeatherSuccess) {
-                              return "${state.weatherData['current']?['temperature_2m'] ?? '--'}";
+                              return "${state.weatherData['current']?['temperature_2m'] ?? '--'}$currentUnit";
                             }
                             return "--";
                           },
                           builder: (context, temp) {
                             return Text(
-                              "$temp°C",
+                              temp,
                               style: const TextStyle(
                                 fontSize: 55,
                                 fontWeight: FontWeight.bold,
@@ -189,7 +231,8 @@ class HomepageState extends State<Homepage> {
                           },
                         ),
                       ),
-            
+
+                      // Current date and time - updates every minute
                       StreamBuilder<DateTime>(
                         stream: Stream.periodic(
                           const Duration(minutes: 1),
@@ -212,6 +255,7 @@ class HomepageState extends State<Homepage> {
                         },
                       ),
                       const SizedBox(height: 20),
+                      // Hourly forecast section
                       const Align(
                         alignment: Alignment.centerLeft,
                         child: Padding(
@@ -231,10 +275,36 @@ class HomepageState extends State<Homepage> {
                           if (state is WeatherSuccess) {
                             return hourlyForecast(state);
                           }
-                          return Text("__");
+                          // Skeleton loader while fetching data
+                          return SizedBox(
+                            height: 120,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: 5,
+                              itemBuilder: (context, index) {
+                                return Container(
+                                  width: 75,
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(
+                                      0.08,
+                                    ),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.1),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          );
                         },
                       ),
                       const SizedBox(height: 15),
+                      // Sunrise and Sunset times
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -264,11 +334,12 @@ class HomepageState extends State<Homepage> {
                           }),
                         ],
                       ),
-            
+
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 5),
                         child: Divider(color: Colors.grey),
                       ),
+                      // Max and Min temperatures
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -276,7 +347,7 @@ class HomepageState extends State<Homepage> {
                             state,
                           ) {
                             if (state is WeatherSuccess) {
-                              return "${state.weatherData['daily']?['temperature_2m_max']?[0] ?? '--'}°C";
+                              return "${state.weatherData['daily']?['temperature_2m_max']?[0] ?? '--'}$currentUnit";
                             }
                             return "Loading...";
                           }),
@@ -284,7 +355,7 @@ class HomepageState extends State<Homepage> {
                             state,
                           ) {
                             if (state is WeatherSuccess) {
-                              return "${state.weatherData['daily']?['temperature_2m_min']?[0] ?? '--'}°C";
+                              return "${state.weatherData['daily']?['temperature_2m_min']?[0] ?? '--'}$currentUnit";
                             }
                             return "Loading...";
                           }),
@@ -294,15 +365,15 @@ class HomepageState extends State<Homepage> {
                         padding: EdgeInsets.symmetric(vertical: 5),
                         child: Divider(color: Colors.grey),
                       ),
+                      // Humidity display
                       Row(
                         mainAxisAlignment: MainAxisAlignment
-                            .center, // وضعناها في المنتصف لأنها عنصر واحد حالياً
+                            .center,
                         children: [
                           WeatherDetailBlock('assets/images/1.png', "Humidity", (
                             state,
                           ) {
                             if (state is WeatherSuccess) {
-                              // جلب الرطوبة من بيانات الـ current
                               return "${state.weatherData['current']?['relative_humidity_2m'] ?? '--'}%";
                             }
                             return "Loading...";

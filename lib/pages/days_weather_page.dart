@@ -1,5 +1,3 @@
-// مسار الملف: lib/pages/days_weather_page.dart
-
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,8 +6,9 @@ import 'package:weatherly/bloc/weather_bloc.dart';
 import 'package:weatherly/bloc/weather_event.dart';
 import 'package:weatherly/bloc/weather_state.dart';
 import 'package:weatherly/components/forecast_card.dart';
-import 'package:weatherly/utils/weather_helper.dart'; // استدعاء الكارت
+import 'package:weatherly/utils/weather_helper.dart';
 
+/// Represents a single day of forecast data shown in the forecast list.
 class ForecastData {
   final String dayName;
   final String date;
@@ -30,6 +29,10 @@ class ForecastData {
   });
 }
 
+/// A screen that shows the 7-day weather forecast for the given position.
+///
+/// This screen listens to the WeatherBloc and renders loading, error, or
+/// forecast views depending on the current state.
 class ForecastPage extends StatefulWidget {
   final Position position;
   const ForecastPage({super.key, required this.position});
@@ -47,6 +50,7 @@ class _ForecastPageState extends State<ForecastPage> {
     );
   }
 
+  /// Converts an ISO8601 timestamp to a 12-hour clock string.
   String _formatTime(String isoTime) {
     try {
       final dateTime = DateTime.parse(isoTime);
@@ -63,8 +67,10 @@ class _ForecastPageState extends State<ForecastPage> {
 
   @override
   Widget build(BuildContext context) {
+    // The page uses a stacked layout with decorative background shapes and
+    // a content layer rendered on top of a blurred visual effect.
     return Scaffold(
-      backgroundColor: Colors.black, // نفس خلفية Homepage
+      backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -73,7 +79,8 @@ class _ForecastPageState extends State<ForecastPage> {
       ),
       body: Stack(
         children: [
-          // 1. الدوائر الملونة لتطابق Homepage
+          // Decorative background shapes used to create a custom gradient-like
+          // ambient glow behind the forecast content.
           Align(
             alignment: const AlignmentDirectional(2.4, 0.5),
             child: Container(
@@ -96,16 +103,15 @@ class _ForecastPageState extends State<ForecastPage> {
             ),
           ),
 
-          // 2. نفس تأثير الـ Blur القوي في Homepage
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
             child: Container(decoration: const BoxDecoration(color: Colors.transparent)),
           ),
 
-          // 3. المحتوى
           SafeArea(
             child: BlocBuilder<WeatherBloc, WeatherState>(
               builder: (context, state) {
+                // Display a different UI depending on the current weather state.
                 if (state is WeatherLoading || state is WeatherInitial) {
                   return const Center(child: CircularProgressIndicator(color: Colors.white));
                 } else if (state is WeatherError) {
@@ -124,6 +130,7 @@ class _ForecastPageState extends State<ForecastPage> {
                   final List sunrises = daily['sunrise'] ?? [];
                   final List sunsets = daily['sunset'] ?? [];
 
+                  // Transform raw daily arrays into a list of ForecastData objects.
                   final List<ForecastData> forecastList = List.generate(
                     times.length,
                     (index) {
@@ -131,7 +138,8 @@ class _ForecastPageState extends State<ForecastPage> {
                       final List<String> weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                       final now = DateTime.now();
                       final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
-                      final appearance = getWeatherImagePath(weatherCodes[index].toInt());
+                      final appearance = getWeatherImagePath(weatherCodes[index].toInt(), 1);
+                      print(date);
 
                       return ForecastData(
                         dayName: isToday ? "Today" : weekdays[date.weekday - 1],
@@ -148,6 +156,7 @@ class _ForecastPageState extends State<ForecastPage> {
                   return RefreshIndicator(
                     color: Colors.blueAccent,
                     backgroundColor: Colors.white,
+                    // Allow the user to pull down to refresh the forecast data.
                     onRefresh: () async {
                       context.read<WeatherBloc>().add(
                         FetchWeather(position: widget.position, update: true),
@@ -178,7 +187,6 @@ class _ForecastPageState extends State<ForecastPage> {
                             padding: const EdgeInsets.symmetric(horizontal: 16.0),
                             itemCount: forecastList.length,
                             itemBuilder: (context, index) {
-                              // استخدام الكارت المنفصل هنا
                               return ForecastCard(data: forecastList[index]);
                             },
                           ),
