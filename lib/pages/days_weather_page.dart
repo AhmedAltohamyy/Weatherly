@@ -1,4 +1,4 @@
-// مسار الملف: lib/pages/days_weather_page.dart
+// ignore_for_file: deprecated_member_use
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -8,16 +8,17 @@ import 'package:weatherly/bloc/weather_bloc.dart';
 import 'package:weatherly/bloc/weather_event.dart';
 import 'package:weatherly/bloc/weather_state.dart';
 import 'package:weatherly/components/forecast_card.dart';
-import 'package:weatherly/utils/weather_helper.dart'; // استدعاء الكارت
+import 'package:weatherly/utils/weather_helper.dart';
 
+/// Data model for daily forecast information
 class ForecastData {
-  final String dayName;
-  final String date;
-  final int maxTemp;
-  final int minTemp;
-  final String weatherImage;
-  final String sunrise;
-  final String sunset;
+  final String dayName;     // e.g., "Monday", "Today"
+  final String date;        // e.g., "1/12" (day/month)
+  final int maxTemp;        // Maximum temperature for the day
+  final int minTemp;        // Minimum temperature for the day
+  final String weatherImage; // Path to weather icon asset
+  final String sunrise;     // Sunrise time in 12-hour format
+  final String sunset;      // Sunset time in 12-hour format
 
   ForecastData({
     required this.dayName,
@@ -30,6 +31,7 @@ class ForecastData {
   });
 }
 
+/// Page displaying daily weather forecast for the next 7 days
 class ForecastPage extends StatefulWidget {
   final Position position;
   const ForecastPage({super.key, required this.position});
@@ -42,11 +44,14 @@ class _ForecastPageState extends State<ForecastPage> {
   @override
   void initState() {
     super.initState();
+    // Fetch weather data for the forecast (without forcing update)
     context.read<WeatherBloc>().add(
       FetchWeather(position: widget.position, update: false),
     );
   }
 
+  /// Converts ISO8601 time string to 12-hour format (e.g., "02:00 PM")
+  /// Used for displaying sunrise/sunset times
   String _formatTime(String isoTime) {
     try {
       final dateTime = DateTime.parse(isoTime);
@@ -64,7 +69,7 @@ class _ForecastPageState extends State<ForecastPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // نفس خلفية Homepage
+      backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -73,7 +78,7 @@ class _ForecastPageState extends State<ForecastPage> {
       ),
       body: Stack(
         children: [
-          // 1. الدوائر الملونة لتطابق Homepage
+          // Decorative blurred background shapes (same as homepage)
           Align(
             alignment: const AlignmentDirectional(2.4, 0.5),
             child: Container(
@@ -96,13 +101,12 @@ class _ForecastPageState extends State<ForecastPage> {
             ),
           ),
 
-          // 2. نفس تأثير الـ Blur القوي في Homepage
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
             child: Container(decoration: const BoxDecoration(color: Colors.transparent)),
           ),
 
-          // 3. المحتوى
+          // Weather forecast content
           SafeArea(
             child: BlocBuilder<WeatherBloc, WeatherState>(
               builder: (context, state) {
@@ -116,6 +120,7 @@ class _ForecastPageState extends State<ForecastPage> {
                     ),
                   );
                 } else if (state is WeatherSuccess) {
+                  // Extract daily forecast data from API response
                   final daily = state.weatherData['daily'];
                   final List times = daily['time'] ?? [];
                   final List weatherCodes = daily['weather_code'] ?? [];
@@ -124,14 +129,17 @@ class _ForecastPageState extends State<ForecastPage> {
                   final List sunrises = daily['sunrise'] ?? [];
                   final List sunsets = daily['sunset'] ?? [];
 
+                  // Build list of ForecastData objects for UI display
                   final List<ForecastData> forecastList = List.generate(
                     times.length,
                     (index) {
                       final DateTime date = DateTime.parse(times[index]);
                       final List<String> weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                       final now = DateTime.now();
+                      // Check if the forecast date is today
                       final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
-                      final appearance = getWeatherImagePath(weatherCodes[index].toInt());
+                      final appearance = getWeatherImagePath(weatherCodes[index].toInt(), 1);
+                      print(date);
 
                       return ForecastData(
                         dayName: isToday ? "Today" : weekdays[date.weekday - 1],
@@ -178,7 +186,7 @@ class _ForecastPageState extends State<ForecastPage> {
                             padding: const EdgeInsets.symmetric(horizontal: 16.0),
                             itemCount: forecastList.length,
                             itemBuilder: (context, index) {
-                              // استخدام الكارت المنفصل هنا
+                              // Display each day's forecast using ForecastCard component
                               return ForecastCard(data: forecastList[index]);
                             },
                           ),

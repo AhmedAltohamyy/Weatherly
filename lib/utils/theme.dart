@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// Light theme configuration for the app with clean, bright colors
 final lightTheme = ThemeData(
   brightness: Brightness.light,
   primarySwatch: Colors.blue,
@@ -31,7 +32,7 @@ final lightTheme = ThemeData(
   ),
 );
 
-// Dark theme configuration
+/// Dark theme configuration for the app with dark background and teal accents
 final darkTheme = ThemeData(
   brightness: Brightness.dark,
   primarySwatch: Colors.teal,

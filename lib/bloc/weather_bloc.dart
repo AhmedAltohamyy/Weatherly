@@ -8,70 +8,51 @@ import 'package:hive/hive.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
+/// BLoC responsible for managing weather data fetching and caching
+/// Handles API calls to Open-Meteo weather service and stores data locally with Hive
 class WeatherBloc extends Bloc<WeatherEvent, WeatherState> {
   WeatherBloc() : super(WeatherInitial()) {
     Dio dio = Dio();
+    final Box settings = Hive.box('settings');
     final weatherBox = Hive.box("weatherBox");
     final lastCityBox = Hive.box("lastCity");
+    
+    // Event handler for FetchWeather events - retrieves weather data or serves from cache
     on<FetchWeather>((event, emit) async {
       emit(WeatherLoading());
 
       try {
-        bool needsUpdate = event.update;
+        String Degree = settings.get('degree', defaultValue: "celsius");
+        bool needsUpdate = event.update; // User can force refresh via pull-to-refresh
         final now = DateTime.now();
 
-        // جلب البيانات المخزنة
+        // Retrieve cached data to avoid unnecessary API calls
         final cachedData = weatherBox.get('weatherData');
         final cachedCity = lastCityBox.get('cityName');
-        final String? lastUpdateStr = weatherBox.get(
-          'lastUpdateTime',
-        ); // سنخزن الوقت بالكامل
+        final String? lastUpdateStr = weatherBox.get('lastUpdateTime');
         final cachedLat = weatherBox.get('lat');
         final cachedLon = weatherBox.get('lon');
 
-        if (cachedData != null &&
-            cachedCity != null &&
-            lastUpdateStr != null &&
-            cachedLat != null &&
-            cachedLon != null) {
-          final DateTime lastUpdate = DateTime.parse(lastUpdateStr);
-
-          // 1. حساب المسافة
-          final distance = Geolocator.distanceBetween(
-            event.position.latitude,
-            event.position.longitude,
-            cachedLat,
-            cachedLon,
-          );
-
-          // 2. حساب الفارق الزمني بالساعات
-          final int hoursDifference = now.difference(lastUpdate).inHours;
-
-          // 3. التحقق مما إذا كان اليوم قد تغير
-          final bool isSameDay =
-              now.year == lastUpdate.year &&
-              now.month == lastUpdate.month &&
-              now.day == lastUpdate.day;
-
-          // شرط التحديث:
-          // إذا كان في نفس اليوم و المسافة أقل من 5كم و مر أقل من ساعتين -> لا نحتاج تحديث
-          if (isSameDay && distance < 5000 && hoursDifference < 1) {
-            needsUpdate = true;
-          }
+        // If any cache is missing, force an update from the API
+        if (cachedData == null ||
+            cachedCity == null ||
+            lastUpdateStr == null ||
+            cachedLat == null ||
+            cachedLon == null) {
+         needsUpdate = true;
         }
 
         if (needsUpdate) {
-          String cityName = "Unknown City"; // Default value
+          String cityName = "Unknown City";
 
           try {
-            // 1. Get the Placemarks
+            // Use reverse geocoding to get the city name from coordinates
             List<Placemark> placemarks = await placemarkFromCoordinates(
               event.position.latitude,
               event.position.longitude,
             );
             print("$placemarks");
-            // 2. Enhanced Fallback Logic
-            cityName = "Unknown Location"; // Start with a default
+            cityName = "Unknown Location";
 
             if (placemarks.isNotEmpty) {
               print("====================================");
@@ -79,56 +60,58 @@ class WeatherBloc extends Bloc<WeatherEvent, WeatherState> {
               print("====================================");
               Placemark place = placemarks[0];
 
-              // Try to find the best name available
+              // Format: State/Province - District/Region
               cityName =
                   "${place.administrativeArea} - ${place.subAdministrativeArea}";
 
-              print("Found City: $cityName"); // Check your debug console!
+              print("Found City: $cityName");
             }
           } catch (e) {
             print("Geocoding failed: $e");
-            // Don't emit error here, just keep "Unknown City" and proceed to get weather
           }
 
-          // (2) طلب الـ API
+          // Fetch weather data from Open-Meteo free weather API
           const url = 'https://api.open-meteo.com/v1/forecast';
           final response = await dio.get(
             url,
-            
             queryParameters: {
               'latitude': event.position.latitude,
               'longitude': event.position.longitude,
-              'current': "temperature_2m,relative_humidity_2m,is_day,weather_code", 
+              'current': "temperature_2m,relative_humidity_2m,is_day,weather_code",
               'hourly': "temperature_2m,relative_humidity_2m,is_day,weather_code",
               'daily': "weather_code,sunrise,sunset,temperature_2m_max,temperature_2m_min",
+              'temperature_unit': Degree,
               'timezone': "auto",
             },
           );
           print(response.data);
 
-          // (3) تخزين البيانات الجديدة مع الوقت الحالي بدقة
+          // Cache the fetched weather data locally to reduce API calls
           await weatherBox.put('weatherData', response.data);
           await lastCityBox.put('cityName', cityName);
           await weatherBox.put(
             'lastUpdateTime',
             now.toIso8601String(),
-          ); // تخزين الوقت بصيغة نصية
+          );
           await weatherBox.put('lat', event.position.latitude);
           await weatherBox.put('lon', event.position.longitude);
 
           emit(WeatherSuccess(response.data, cityName));
         } else {
-          // العودة للبيانات المخزنة إذا لم نحتاج للتحديث
+          // Serve data from cache if no update is needed
           emit(WeatherSuccess(cachedData, cachedCity));
         }
       } on DioException catch (e) {
+        // Handle network errors by serving cached data if available
         print("Dio Error: $e");
         final cachedData = weatherBox.get('weatherData');
-        final cachedCity = weatherBox.get('cityName');
+        final cachedCity = lastCityBox.get('cityName');
 
         if (cachedData != null && cachedCity != null) {
+          // Return cached data even during network failure
           emit(WeatherSuccess(cachedData, cachedCity));
         } else {
+          // No cached data and no network connection
           emit(const WeatherError("No internet connection and no cached data"));
         }
       } catch (e) {
